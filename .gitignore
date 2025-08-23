@@ -1,0 +1,58 @@
+# Node.js / Next.js
+client/node_modules/
+client/.next/
+client/out/
+client/build/
+client/.env*
+client/.vercel/
+client/*.tsbuildinfo
+client/next-env.d.ts
+client/npm-debug.log*
+client/yarn-debug.log*
+client/yarn-error.log*
+client/.pnpm-debug.log*
+client/.pnpm-store/
+
+# Python
+server/__pycache__/
+server/*.pyc
+server/*.pyo
+server/*.pyd
+server/.Python
+server/env/
+server/venv/
+server/.env
+server/.venv
+server/.mypy_cache/
+server/.pytest_cache/
+server/.coverage
+server/coverage.xml
+server/.cache
+server/.DS_Store
+
+# Docker
+server/*.log
+server/tmp/
+server/downloads/
+
+# OS / Editor
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.code-workspace
+
+# pnpm
+.pnpm-store/
+
+# Logs
+*.log
+
+# Misc
+*.local
+.env*
