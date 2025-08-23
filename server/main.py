@@ -1,57 +1,78 @@
-import os
-from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse, JSONResponse
-from myutils import Downloader, FileManager
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from models import FormatResponse, SubtitleResponse, ErrorResponse, MediaInfo
+from services import MediaFormatService
 
-app = FastAPI(title="Fetchly API")
-downloader = Downloader(FileManager())
+app = FastAPI(
+    title="Media Formats API",
+    description="API to get available media formats using yt-dlp",
+    version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
-def home():
-    return {"message": "Fetchly API is running"}
+async def root():
+    return {
+        "message": "Media Formats API", 
+        "version": "1.0.0",
+    }
 
-@app.get("/metadata")
-def metadata_endpoint(
-    url: str = Query(..., description="YouTube video URL")
-):
+@app.get(
+    "/formats",
+    response_model=FormatResponse,
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}
+)
+async def get_media_formats(url: str = Query(..., description="Media URL")):
     try:
-        metadata = downloader.get_metadata(url)
-        return JSONResponse(content=metadata)
+        return MediaFormatService.get_media_formats(url)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        raise HTTPException(
+            status_code=400 if any(keyword in str(e).lower() for keyword in [
+                "unsupported", "private", "unavailable", "invalid"
+            ]) else 500,
+            detail=str(e)
+        )
 
-@app.get("/download/video")
-def download_video_endpoint(
-    url: str = Query(..., description="YouTube video URL"),
-    start: str = Query(None, description="Start time (HH:MM:SS)"),
-    end: str = Query(None, description="End time (HH:MM:SS)")
-):
+@app.get(
+    "/subtitles",
+    response_model=SubtitleResponse,
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}
+)
+async def get_media_subtitles(url: str = Query(..., description="Media URL")):
     try:
-        file_path = downloader.download_video(url, start, end)
-        return FileResponse(file_path, media_type="video/mp4", filename=os.path.basename(file_path))
+        return MediaFormatService.get_media_subtitles(url)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_co,
-    ext: str = Query("mp4", description="File extension")de=500)
+        raise HTTPException(
+            status_code=400 if any(keyword in str(e).lower() for keyword in [
+                "unsupported", "private", "unavailable", "invalid"
+            ]) else 500,
+            detail=str(e)
+        )
 
-@app.get("/download/audio")
-def download_audio_endpoint(
-    url:, ext str = Query(..., description="YouTube video URL"),
-f    sta{ext} str = Query(None, description="Start time (HH:MM:SS)"),
-    end: str = Query(None, description="End time (HH:MM:SS)")
-):
+@app.get(
+    "/info",
+    response_model=MediaInfo,
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}
+)
+async def get_media_info(url: str = Query(..., description="Media URL")):
+    """Get basic video information (title, thumbnail, duration, views, etc.)"""
     try:
-        file_path = downloader.download_audio(url, start, end)
-        return FileResponse(file_path, media_type="audio/mpeg", filename=os.path.basename(file_path))
+        return MediaFormatService.get_media_info(url)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/download/subtitles")
-def download_subtitles_endpoint(
-    url: str = Query(..., description="YouTube video URL"),
-    lang: str = Query("en", description="Subtitle language (default: en)")
-):
-    try:
-        file_path = downloader.download_subtitles(url, lang)
-        return FileResponse(file_path, media_type="text/vtt", filename=os.path.basename(file_path))
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "media-formats-api"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
