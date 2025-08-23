@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from models import FormatResponse, SubtitleResponse, ErrorResponse, MediaInfo
+from models import FormatResponse, SubtitleResponse, ErrorResponse, MediaInfo, CombinedMediaResponse
 from services import MediaFormatService
 
 app = FastAPI(
@@ -16,6 +16,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def _handle_service_error(e: Exception) -> HTTPException:
+    """Convert service exceptions to appropriate HTTP errors"""
+    return HTTPException(
+        status_code=400 if any(keyword in str(e).lower() for keyword in [
+            "unsupported", "private", "unavailable", "invalid"
+        ]) else 500,
+        detail=str(e)
+    )
 
 @app.get("/")
 async def root():
@@ -33,12 +42,7 @@ async def get_media_formats(url: str = Query(..., description="Media URL")):
     try:
         return MediaFormatService.get_media_formats(url)
     except Exception as e:
-        raise HTTPException(
-            status_code=400 if any(keyword in str(e).lower() for keyword in [
-                "unsupported", "private", "unavailable", "invalid"
-            ]) else 500,
-            detail=str(e)
-        )
+        raise _handle_service_error(e)
 
 @app.get(
     "/subtitles",
@@ -49,12 +53,7 @@ async def get_media_subtitles(url: str = Query(..., description="Media URL")):
     try:
         return MediaFormatService.get_media_subtitles(url)
     except Exception as e:
-        raise HTTPException(
-            status_code=400 if any(keyword in str(e).lower() for keyword in [
-                "unsupported", "private", "unavailable", "invalid"
-            ]) else 500,
-            detail=str(e)
-        )
+        raise _handle_service_error(e)
 
 @app.get(
     "/info",
@@ -62,11 +61,22 @@ async def get_media_subtitles(url: str = Query(..., description="Media URL")):
     responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}
 )
 async def get_media_info(url: str = Query(..., description="Media URL")):
-    """Get basic video information (title, thumbnail, duration, views, etc.)"""
     try:
         return MediaFormatService.get_media_info(url)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise _handle_service_error(e)
+
+@app.get(
+    "/mediadata",
+    response_model=CombinedMediaResponse,
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}
+)
+async def get_media_data(url: str = Query(..., description="Media URL")):
+    """Get all media information (info, formats, and subtitles) in a single request"""
+    try:
+        return MediaFormatService.get_combined_media_data(url)
+    except Exception as e:
+        raise _handle_service_error(e)
 
 @app.get("/health")
 async def health_check():

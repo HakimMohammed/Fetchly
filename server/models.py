@@ -22,6 +22,11 @@ class SubtitleInfo(BaseModel):
 class SubtitleResponse(BaseModel):
     subtitles: Dict[str, SubtitleInfo]
 
+class CombinedMediaResponse(BaseModel):
+    info: MediaInfo
+    formats: FormatResponse
+    subtitles: SubtitleResponse
+
 class ErrorResponse(BaseModel):
     error: str
     details: Optional[str] = None
