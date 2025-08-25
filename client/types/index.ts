@@ -1,26 +1,28 @@
-type MetaData = {
-    id: string;
+interface VideoInfo {
     title: string;
-    thumbnail: string;
-    views: number;
-    channel: string;
-    duration_string: string;
     duration: number;
-    streams: {
-        video: Stream[];
-        audio: Stream[];
-    };
-    subtitles: Subtitle[];
-};
+    duration_string: string;
+    thumbnail: string;
+    views?: number | null;
+}
 
-type Stream = {
-    Extension: string;
-    Quality: string;
-    URL: string;
-};
-
-type Subtitle = {
-    lang: string;
-    ext: string;
+// New types for download functionality
+interface DownloadRequest {
     url: string;
-};
+    media_type: "video" | "audio";
+    extension?: string;
+    quality?: string;
+    language?: string;
+    format?: string;
+    start_time?: string;
+    end_time?: string;
+}
+
+interface DownloadResponse {
+    message: string;
+    filename: string;
+    download_url: string;
+}
+
+// Export all types
+export type { DownloadRequest, DownloadResponse, VideoInfo };

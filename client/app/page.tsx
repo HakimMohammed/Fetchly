@@ -7,20 +7,23 @@ import { ProgressIndicator } from "@/components/progress-indicator"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Toaster } from "@/components/ui/toaster"
 import { VideoMetadataCard } from "@/components/video-metadata-card"
+import { handleError } from "@/lib/error-handler"
 import { ytService } from "@/services/yt.service"
+import type { VideoInfo } from "@/types"
 import { utils } from "@/utils"
 import { Download, Link, Sparkles } from "lucide-react"
 import { useState } from "react"
 
 export default function VideoDownloader() {
   const [url, setUrl] = useState("")
-  const [metadata, setMetadata] = useState<MetaData | null>(null)
-  const [videos, setVideos] = useState<Stream[]>([])
-  const [audios, setAudios] = useState<Stream[]>([])
-  const [subtitles, setSubtitles] = useState<Subtitle[]>([])
+  const [mediaInfo, setMediaInfo] = useState<VideoInfo | null>(null)
+
   const [status, setStatus] = useState<"idle" | "processing" | "downloading" | "complete" | "error">("idle")
   const [progress, setProgress] = useState(0)
+
+  // No need to transform formats for simplified flow
 
   const handleProcess = async () => {
     if (!url.trim()) return
@@ -28,27 +31,32 @@ export default function VideoDownloader() {
     setStatus("processing")
     setProgress(0)
 
-    const metaData: MetaData = await ytService.getMetaData(url)
-    setMetadata(metaData)
-    setVideos(metaData.streams.video)
-    setAudios(metaData.streams.audio)
-    setSubtitles(metaData.subtitles)
+    try {
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval)
+            return 90
+          }
+          return prev + 10
+        })
+      }, 200)
 
-    setStatus("idle")
+      const videoInfo: VideoInfo = await ytService.getMetaData(url)
 
-    // Simulate processing with progress
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval)
-          return 90
-        }
-        return prev + 10
-      })
-    }, 200)
+      clearInterval(progressInterval)
+      setProgress(100)
+
+      setMediaInfo(videoInfo)
+      setStatus("idle")
+    } catch (error) {
+      handleError(error, "Failed to process video URL")
+      setStatus("error")
+      setProgress(0)
+    }
   }
 
-  const handleDownload = (type: string, options: any) => {
+  const handleDownload = (type: string, options: Record<string, unknown>) => {
     setStatus("downloading")
     setProgress(0)
 
@@ -68,6 +76,10 @@ export default function VideoDownloader() {
     console.log(`Downloading ${type} with options:`, options)
   }
 
+  const isValidUrl = (urlString: string): boolean => {
+    return utils.isValidUrl(urlString);
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -80,11 +92,11 @@ export default function VideoDownloader() {
             Modern Video Downloader
           </div>
           <h2 className="text-4xl md:text-5xl font-serif font-black mb-4 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Download Videos, Audio & Subtitles
+            Download Videos or Audio
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Paste any video URL and download in your preferred format and quality. Support for trimming, multiple
-            formats, and subtitle extraction.
+            Paste any video URL and download in your preferred format and quality. Supports trimming and popular
+            formats.
           </p>
         </div>
 
@@ -103,7 +115,7 @@ export default function VideoDownloader() {
             />
             <Button
               onClick={handleProcess}
-              disabled={!url.trim() || status === "processing"}
+              disabled={!url.trim() || !isValidUrl(url) || status === "processing"}
               className="px-6 font-medium cursor-pointer"
             >
               {status === "processing" ? "Processing..." : "Process"}
@@ -118,18 +130,21 @@ export default function VideoDownloader() {
         <ProgressIndicator status={status} progress={progress} />
 
         {/* Video Metadata */}
-        {metadata && (
+        {mediaInfo && (
           <div className="mb-8">
             <h3 className="text-2xl font-serif font-bold mb-4">Video Information</h3>
-            <VideoMetadataCard metadata={metadata} />
+            <VideoMetadataCard videoInfo={mediaInfo} />
           </div>
         )}
 
         {/* Download Options */}
-        {metadata && (
+        {mediaInfo && (
           <div className="mb-8">
             <h3 className="text-2xl font-serif font-bold mb-4">Download Options</h3>
-            <DownloadOptions duration={metadata.duration} subtitles={subtitles} url={url} videos={videos} audios={audios} />
+            <DownloadOptions
+              duration={mediaInfo.duration}
+              url={url}
+            />
           </div>
         )}
 
@@ -169,6 +184,7 @@ export default function VideoDownloader() {
       </main>
 
       <Footer />
+      <Toaster />
     </div>
   )
 }

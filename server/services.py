@@ -1,6 +1,6 @@
 import subprocess
 import json
-from models import FormatResponse, MediaURL, SubtitleResponse, MediaInfo, CombinedMediaResponse
+from models import MediaURL, MediaInfo
 from utils import Utils
 
 class MediaFormatService:
@@ -43,7 +43,7 @@ class MediaFormatService:
         MediaFormatService._validate_url(media_url)
         
         result = MediaFormatService._run_ytdlp_command(
-            ["yt-dlp", "--dump-json", "--no-warnings", media_url],
+            ["yt-dlp", "-J", "--no-warnings", "--skip-download", media_url],
             "get video info"
         )
         
@@ -56,48 +56,3 @@ class MediaFormatService:
             return MediaInfo(**media_info)
         except json.JSONDecodeError:
             raise Exception("Failed to parse yt-dlp JSON output")
-        
-    @staticmethod
-    def get_media_formats(media_url: str) -> FormatResponse:
-        MediaFormatService._validate_url(media_url)
-        
-        result = MediaFormatService._run_ytdlp_command(
-            ["yt-dlp", "--list-formats", media_url],
-            "get formats"
-        )
-        
-        if result.returncode != 0:
-            raise MediaFormatService._handle_ytdlp_error(result.stderr, media_url)
-
-        parsed_data = Utils.parse_ytdlp_output(result.stdout)
-        return FormatResponse(**parsed_data)
-    
-    @staticmethod
-    def get_media_subtitles(media_url: str) -> SubtitleResponse:
-        MediaFormatService._validate_url(media_url)
-        
-        result = MediaFormatService._run_ytdlp_command(
-            ["yt-dlp", "--list-subs", media_url],
-            "get subtitles"
-        )
-        
-        if result.returncode != 0:
-            raise MediaFormatService._handle_ytdlp_error(result.stderr, media_url)
-
-        parsed_data = Utils.parse_ytdlp_subtitles(result.stdout)
-        return SubtitleResponse(**parsed_data)
-    
-    @staticmethod
-    def get_combined_media_data(media_url: str) -> CombinedMediaResponse:
-        """Get all media information in a single call"""
-        MediaFormatService._validate_url(media_url)
-        
-        info = MediaFormatService.get_media_info(media_url)
-        formats = MediaFormatService.get_media_formats(media_url)
-        subtitles = MediaFormatService.get_media_subtitles(media_url)
-        
-        return CombinedMediaResponse(
-            info=info,
-            formats=formats,
-            subtitles=subtitles
-        )
