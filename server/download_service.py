@@ -10,8 +10,19 @@ from ffmpeg_util import supported_video_exts, supported_audio_exts
 class DownloadService:
     
     def __init__(self, downloads_dir: str = "downloads"):
-        self.downloads_dir = Path(downloads_dir)
-        self.downloads_dir.mkdir(exist_ok=True)
+        """Initialize the service and ensure a downloads directory exists.
+
+        By default, the downloads dir is placed inside the server package
+        directory (next to this file) to avoid ambiguity with the process CWD.
+        """
+        base_dir = Path(__file__).parent  # /path/to/repo/server
+        dl_path = Path(downloads_dir)
+        # If a relative path is provided, resolve it relative to this file's dir
+        if not dl_path.is_absolute():
+            dl_path = (base_dir / dl_path).resolve()
+
+        self.downloads_dir = dl_path
+        self.downloads_dir.mkdir(parents=True, exist_ok=True)
         self._cleanup_interval = 3600
 
     def _build_ytdlp_command(self, request: DownloadRequest, marker: str | None = None) -> tuple[list, str]:
