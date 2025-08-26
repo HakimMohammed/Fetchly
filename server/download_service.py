@@ -14,11 +14,7 @@ class DownloadService:
         self.downloads_dir.mkdir(exist_ok=True)
         self._cleanup_interval = 3600
 
-    # Removed legacy filename helper; we rely on yt-dlp templating with marker
-
     def _build_ytdlp_command(self, request: DownloadRequest, marker: str | None = None) -> tuple[list, str]:
-        """Build yt-dlp command based on request parameters and return (command, marker)"""
-        # Generate unique marker used in filename for later identification
         if not marker:
             marker = f"{int(time.time())}_{str(uuid.uuid4())[:8]}"
         unique_filename = f"%(title)s_{marker}.%(ext)s"
@@ -26,7 +22,6 @@ class DownloadService:
         
         command = ["yt-dlp", "-o", output_template, request.url]
 
-        # Optional trimming via download sections
         section = self._build_download_sections(request.start_time, request.end_time)
         if section:
             command.extend(["--download-sections", section])
@@ -34,8 +29,6 @@ class DownloadService:
         if request.media_type == "video":
             format_selector = self._build_video_format_selector(request)
             command.extend(["-f", format_selector])
-            # Prefer output containers via merge rather than filtering formats by ext
-            # If user specified an extension, honor it; otherwise provide preferences
             merge_pref = request.extension if request.extension else "mp4/mkv/webm"
             command.extend(["--merge-output-format", merge_pref])
         elif request.media_type == "audio":
@@ -44,7 +37,6 @@ class DownloadService:
         return command, marker
 
     def _build_download_sections(self, start: Optional[str], end: Optional[str]) -> Optional[str]:
-        """Build yt-dlp --download-sections value like *HH:MM:SS-HH:MM:SS"""
         if not start and not end:
             return None
         s = start or "00:00:00"
@@ -52,13 +44,6 @@ class DownloadService:
         return f"*{s}-{e}"
 
     def _build_video_format_selector(self, request: DownloadRequest) -> str:
-        """Build a robust selector that prefers separate streams within a height cap.
-
-        Examples:
-        - With quality=720p -> "bv*[height<=720]+ba/b[height<=720]"
-        - Without quality -> "bv*[height<=1080]+ba/b[height<=1080]"
-        """
-        # Determine height cap
         height_cap = None
         if request.quality:
             h = request.quality.replace('p', '')
@@ -68,14 +53,11 @@ class DownloadService:
             height_cap = "1080"
 
         filt = f"[height<={height_cap}]" if height_cap else ""
-        # Do not constrain by ext here; let merge-output-format decide container
         return f"bv*{filt}+ba/b{filt}"
 
     def _build_audio_command(self, request: DownloadRequest) -> list:
-        """Build audio extraction command"""
         audio_cmd = ["-x"]  # Extract audio
         
-        # Choose a sensible default if not provided
         chosen_ext = request.extension
         if not chosen_ext:
             # preference order
@@ -101,33 +83,29 @@ class DownloadService:
                 
         return audio_cmd
 
-    # Subtitle downloads removed to focus on core video/audio functionality
-
     def _find_downloaded_file(self, marker: str | None = None) -> Optional[Path]:
         """Find the downloaded file; if marker provided, prefer files containing it"""
         try:
-            # Get all files that are not partial downloads
             files = [
                 f for f in self.downloads_dir.iterdir() 
                 if f.is_file() and not f.name.endswith(('.part', '.tmp'))
             ]
-            
+
             if not files:
                 return None
-            
+
             if marker:
                 marked = [f for f in files if marker in f.name]
                 if marked:
                     return max(marked, key=lambda f: f.stat().st_mtime)
-            
-            # Fallback: Return the most recent file
+
             return max(files, key=lambda f: f.stat().st_mtime)
-            
+
         except Exception:
             return None
 
     def download_media(self, request: DownloadRequest) -> Tuple[str, str]:
-        # Validate requested extensions
+
         if request.media_type == "video":
             allowed = supported_video_exts()
             if request.extension and request.extension not in allowed:

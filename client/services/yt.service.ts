@@ -25,12 +25,10 @@ export const ytService = {
             return res.data as VideoInfo;
         }),
 
-    downloadWithProgress: async (
+    download: async (
         req: DownloadRequest,
-        onProgress?: (progress: number) => void,
         signal?: AbortSignal
     ): Promise<void> => {
-        onProgress?.(10);
 
         const prep = await retry(async () => {
             const res = await axiosInstance.post<DownloadResponse>(`/download`, req, {
@@ -42,19 +40,11 @@ export const ytService = {
             return res.data;
         });
 
-        onProgress?.(50);
-
         // Use absolute URL from server
         const fileResp = await retry(
             async () =>
                 axiosInstance.get(prep.download_url, {
                     responseType: "blob",
-                    onDownloadProgress: evt => {
-                        if (evt.total) {
-                            const p = 50 + (evt.loaded / evt.total) * 50;
-                            onProgress?.(Math.min(100, Math.max(50, Math.round(p))));
-                        }
-                    },
                     signal,
                 }),
             2,
@@ -77,7 +67,5 @@ export const ytService = {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
-
-        onProgress?.(100);
     },
 };

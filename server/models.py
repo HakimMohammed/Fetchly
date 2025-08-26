@@ -2,12 +2,6 @@ from pydantic import BaseModel, HttpUrl, field_validator
 from pydantic import ValidationInfo
 from typing import Optional, Literal
 import re
-"""Pydantic models and request validation primitives.
-
-Keep environment-dependent validation (like probing ffmpeg) out of models;
-services enforce capability checks at runtime.
-"""
-
 class MediaURL(BaseModel):
     url: HttpUrl
 
@@ -18,8 +12,6 @@ class MediaInfo(BaseModel):
     thumbnail: str
     views: Optional[int] = None
 
-    
-
 class ErrorResponse(BaseModel):
     error: str
 
@@ -28,6 +20,7 @@ class DownloadRequest(BaseModel):
     media_type: Literal["video", "audio"]
     extension: Optional[str] = None
     quality: Optional[str] = None
+    
     # Trimming
     start_time: Optional[str] = None
     end_time: Optional[str] = None
@@ -56,7 +49,6 @@ class DownloadRequest(BaseModel):
     def validate_extension(cls, v: Optional[str], info: ValidationInfo):
         if not v:
             return v
-        # Only syntactic validation here; capability checks are done in services
         if not re.match(r"^[a-zA-Z0-9]{2,5}$", v):
             raise ValueError("Extension must be 2-5 alphanumeric characters")
         return v

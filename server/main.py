@@ -46,8 +46,6 @@ async def capabilities():
     "audio": sorted(list(supported_audio_exts())),
     }
 
- 
-
 @app.get(
     "/info",
     response_model=MediaInfo,
@@ -59,8 +57,6 @@ async def get_media_info(url: str = Query(..., description="Media URL")):
     except Exception as e:
         raise _handle_service_error(e)
 
- 
-
 # Downloading
 @app.post(
     "/download",
@@ -68,13 +64,6 @@ async def get_media_info(url: str = Query(..., description="Media URL")):
     responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}}
 )
 async def download_media(request: DownloadRequest, background_tasks: BackgroundTasks, req: Request):
-    """
-    Download media with specific parameters
-    
-    - For video: specify extension (mp4, webm) and quality (144p, 720p, etc.)
-    - For audio: specify extension (mp3, m4a) and quality (128k, 192k, etc.)
-    
-    """
     try:
         file_path, filename = download_service.download_media(request)
         

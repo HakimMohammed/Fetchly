@@ -66,10 +66,21 @@ const debounce = <T extends (...args: any[]) => any>(func: T, wait: number): ((.
     };
 };
 
+function isValidTimeRange(startTime: string, endTime: string, duration: string): boolean {
+  const isHMS = (v: string) => /^\d{2}:\d{2}:\d{2}$/.test(v);
+  const s = isHMS(startTime) ? startTime : "00:00:00";
+  const e = isHMS(endTime) ? endTime : duration;
+  const start = utils.parseTime(s);
+  const end = utils.parseTime(e);
+  const max = utils.parseTime(duration);
+  return start < end && end <= max;
+}
+
 export const utils = {
     getFullTime,
     parseTime,
     isValidUrl,
+    isValidTimeRange,
     formatFileSize,
     formatDuration,
     debounce,
