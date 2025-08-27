@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   title: "Video Downloader - Download Videos & Audio",
   description: "Modern downloader with trimming and multiple formats",
   generator: "v0.app",
+  icons: {
+    icon: "/icon.png",
+  }
 }
 
 export default function RootLayout({

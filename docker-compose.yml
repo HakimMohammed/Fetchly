@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+    api:
+        build:
+            context: .
+            dockerfile: server/Dockerfile
+        container_name: fetchly-api
+        command:
+            - uvicorn
+            - main:app
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8000"
+            - --root-path
+            - /api
+        ports:
+            - "8000:8000"
+        restart: unless-stopped
+
+    web:
+        build:
+            context: .
+            dockerfile: client/Dockerfile
+            args:
+                # Point the client to the proxy path served by nginx
+                NEXT_PUBLIC_API_BASE_URL: "/api"
+        container_name: fetchly-web
+        environment:
+            - NEXT_PUBLIC_API_BASE_URL=/api
+        depends_on:
+            - api
+        ports:
+            - "3000:3000"
+        restart: unless-stopped
+
+    nginx:
+        image: nginx:1.27-alpine
+        container_name: fetchly-nginx
+        depends_on:
+            - api
+            - web
+        ports:
+            - "80:80"
+        volumes:
+            - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+        restart: unless-stopped
+
+networks:
+    default:
+        name: fetchly-net
