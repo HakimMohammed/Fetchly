@@ -35,17 +35,15 @@ class DownloadService:
 
         # If a cookies file exists, instruct yt-dlp to use it
         try:
-            cookies_path = Path(__file__).parent / "cookies.json"
+            cookies_path = Path(__file__).parent / "cookies.txt"
             if cookies_path.exists() and cookies_path.is_file():
-                # Read a small chunk to determine if placeholder/empty
-                content = ""
+                # Only enable cookies if there's at least one non-comment, non-empty line
                 try:
-                    content = cookies_path.read_text(encoding="utf-8", errors="ignore")
+                    lines = cookies_path.read_text(encoding="utf-8", errors="ignore").splitlines()
                 except Exception:
-                    content = ""
-                content_stripped = content.strip()
-                # Skip if empty or placeholder []
-                if content_stripped and content_stripped != "[]":
+                    lines = []
+                has_entries = any(line.strip() and not line.lstrip().startswith('#') for line in lines)
+                if has_entries:
                     command.extend(["--cookies", str(cookies_path.resolve())])
         except Exception:
             # Silently ignore cookies configuration issues

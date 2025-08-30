@@ -1,0 +1,4 @@
+# Netscape HTTP Cookie File
+# This is a placeholder. Replace with real cookies exported in Netscape format.
+# Example format (tab-separated):
+# domain.com	TRUE	/	FALSE	1735689600	name	value

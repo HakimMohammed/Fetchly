@@ -46,15 +46,16 @@ class MediaFormatService:
         # Base yt-dlp command to fetch JSON info
         command = ["yt-dlp", "-J", "--no-warnings", "--skip-download", media_url]
 
-        # If a cookies file exists and is not a placeholder/empty, add it
+        # If a Netscape cookies file exists and has entries, add it
         try:
-            cookies_path = Path(__file__).parent / "cookies.json"
+            cookies_path = Path(__file__).parent / "cookies.txt"
             if cookies_path.exists() and cookies_path.is_file():
                 try:
-                    content = cookies_path.read_text(encoding="utf-8", errors="ignore").strip()
+                    lines = cookies_path.read_text(encoding="utf-8", errors="ignore").splitlines()
                 except Exception:
-                    content = ""
-                if content and content != "[]":
+                    lines = []
+                has_entries = any(line.strip() and not line.lstrip().startswith('#') for line in lines)
+                if has_entries:
                     command.extend(["--cookies", str(cookies_path.resolve())])
         except Exception:
             # Ignore cookies issues for info command as a non-fatal path
