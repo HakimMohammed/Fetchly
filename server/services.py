@@ -1,5 +1,6 @@
 import subprocess
 import json
+from pathlib import Path
 from models import MediaURL, MediaInfo
 from utils import Utils
 
@@ -42,10 +43,24 @@ class MediaFormatService:
     def get_media_info(media_url: str) -> MediaInfo:
         MediaFormatService._validate_url(media_url)
         
-        result = MediaFormatService._run_ytdlp_command(
-            ["yt-dlp", "-J", "--no-warnings", "--skip-download", media_url],
-            "get video info"
-        )
+        # Base yt-dlp command to fetch JSON info
+        command = ["yt-dlp", "-J", "--no-warnings", "--skip-download", media_url]
+
+        # If a cookies file exists and is not a placeholder/empty, add it
+        try:
+            cookies_path = Path(__file__).parent / "cookies.json"
+            if cookies_path.exists() and cookies_path.is_file():
+                try:
+                    content = cookies_path.read_text(encoding="utf-8", errors="ignore").strip()
+                except Exception:
+                    content = ""
+                if content and content != "[]":
+                    command.extend(["--cookies", str(cookies_path.resolve())])
+        except Exception:
+            # Ignore cookies issues for info command as a non-fatal path
+            pass
+
+        result = MediaFormatService._run_ytdlp_command(command, "get video info")
         
         if result.returncode != 0:
             raise MediaFormatService._handle_ytdlp_error(result.stderr, media_url)

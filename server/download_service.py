@@ -33,6 +33,24 @@ class DownloadService:
         
         command = ["yt-dlp", "-o", output_template, request.url]
 
+        # If a cookies file exists, instruct yt-dlp to use it
+        try:
+            cookies_path = Path(__file__).parent / "cookies.json"
+            if cookies_path.exists() and cookies_path.is_file():
+                # Read a small chunk to determine if placeholder/empty
+                content = ""
+                try:
+                    content = cookies_path.read_text(encoding="utf-8", errors="ignore")
+                except Exception:
+                    content = ""
+                content_stripped = content.strip()
+                # Skip if empty or placeholder []
+                if content_stripped and content_stripped != "[]":
+                    command.extend(["--cookies", str(cookies_path.resolve())])
+        except Exception:
+            # Silently ignore cookies configuration issues
+            pass
+
         section = self._build_download_sections(request.start_time, request.end_time)
         if section:
             command.extend(["--download-sections", section])
