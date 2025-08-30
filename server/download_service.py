@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 from models import DownloadRequest
 from ffmpeg_util import supported_video_exts, supported_audio_exts
+from ytdlp_config import cli_base_args
 
 class DownloadService:
     
@@ -30,24 +31,12 @@ class DownloadService:
             marker = f"{int(time.time())}_{str(uuid.uuid4())[:8]}"
         unique_filename = f"%(title)s_{marker}.%(ext)s"
         output_template = str(self.downloads_dir / unique_filename)
-        
-        command = ["yt-dlp", "-o", output_template, request.url]
 
-        # If a cookies file exists, instruct yt-dlp to use it
-        try:
-            cookies_path = Path(__file__).parent / "cookies.txt"
-            if cookies_path.exists() and cookies_path.is_file():
-                # Only enable cookies if there's at least one non-comment, non-empty line
-                try:
-                    lines = cookies_path.read_text(encoding="utf-8", errors="ignore").splitlines()
-                except Exception:
-                    lines = []
-                has_entries = any(line.strip() and not line.lstrip().startswith('#') for line in lines)
-                if has_entries:
-                    command.extend(["--cookies", str(cookies_path.resolve())])
-        except Exception:
-            # Silently ignore cookies configuration issues
-            pass
+        command: list[str] = ["yt-dlp", "-o", output_template]
+        # Add shared CLI base args (cookies, UA, TLS)
+        command.extend(cli_base_args())
+        # Finally add the URL
+        command.append(request.url)
 
         section = self._build_download_sections(request.start_time, request.end_time)
         if section:

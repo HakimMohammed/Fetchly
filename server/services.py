@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from models import MediaURL, MediaInfo
 from utils import Utils
+from ytdlp_config import extract_info, ydl_options
 
 class MediaFormatService:
     
@@ -42,33 +43,13 @@ class MediaFormatService:
     @staticmethod
     def get_media_info(media_url: str) -> MediaInfo:
         MediaFormatService._validate_url(media_url)
-        
-        # Base yt-dlp command to fetch JSON info
-        command = ["yt-dlp", "-J", "--no-warnings", "--skip-download", media_url]
 
-        # If a Netscape cookies file exists and has entries, add it
+        # Prefer the yt_dlp Python API for info extraction using shared options
         try:
-            cookies_path = Path(__file__).parent / "cookies.txt"
-            if cookies_path.exists() and cookies_path.is_file():
-                try:
-                    lines = cookies_path.read_text(encoding="utf-8", errors="ignore").splitlines()
-                except Exception:
-                    lines = []
-                has_entries = any(line.strip() and not line.lstrip().startswith('#') for line in lines)
-                if has_entries:
-                    command.extend(["--cookies", str(cookies_path.resolve())])
-        except Exception:
-            # Ignore cookies issues for info command as a non-fatal path
-            pass
-
-        result = MediaFormatService._run_ytdlp_command(command, "get video info")
-        
-        if result.returncode != 0:
-            raise MediaFormatService._handle_ytdlp_error(result.stderr, media_url)
-        
-        try:
-            info_json = json.loads(result.stdout)
+            info_json = extract_info(media_url, options=ydl_options(skip_download=True, extract_flat=True))
             media_info = Utils.extract_video_info(info_json)
             return MediaInfo(**media_info)
-        except json.JSONDecodeError:
-            raise Exception("Failed to parse yt-dlp JSON output")
+        except Exception as e:
+            # Map common error messages
+            msg = str(e)
+            raise MediaFormatService._handle_ytdlp_error(msg, media_url)
